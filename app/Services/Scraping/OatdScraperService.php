@@ -15,6 +15,11 @@ class OatdScraperService implements ScraperInterface
         $this->client = new Client([
             'timeout' => 30.0,
             'verify' => false,
+            'headers' => [
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language' => 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+            ],
         ]);
     }
 
@@ -33,25 +38,40 @@ class OatdScraperService implements ScraperInterface
             $crawler = new Crawler($html);
             $documents = [];
 
-            // We specifically look at OATD's structure
-            // Example: .result class contains the item
-            $crawler->filter('li.result')->each(function (Crawler $node) use (&$documents, $url) {
+            // On s'assure de trouver tous les blocs correspondants aux documents
+            $crawler->filter('.result, article, .record, li.result')->each(function (Crawler $node) use (&$documents, $url) {
                 try {
-                    $titleNode = $node->filter('.match-title a');
-                    $title = $titleNode->count() > 0 ? trim($titleNode->text()) : 'Untitled';
-                    $docUrl = $titleNode->count() > 0 ? $titleNode->attr('href') : null;
+                    // Extraction du titre
+                    $titleNode = $node->filter('.match-title, .title, h3, h2')->first();
+                    if ($titleNode->count() === 0) return; // Un résultat sans titre est invalide
+                    
+                    $title = trim($titleNode->text());
 
-                    $authorNode = $node->filter('span.author');
+                    // Extraction de l'URL du document
+                    $docUrl = null;
+                    if ($titleNode->nodeName() === 'a') {
+                        $docUrl = $titleNode->attr('href');
+                    } else if ($titleNode->filter('a')->count() > 0) {
+                        $docUrl = $titleNode->filter('a')->first()->attr('href');
+                    }
+
+                    // Extraction de l'auteur
+                    $authorNode = $node->filter('.author, span.author, .authors');
                     $author = $authorNode->count() > 0 ? trim($authorNode->text()) : null;
 
-                    $publisherNode = $node->filter('span.publisherDisplay');
+                    // Extraction de l'université
+                    $publisherNode = $node->filter('.publisherDisplay, .publisher, .university, .institution');
                     $university = $publisherNode->count() > 0 ? trim($publisherNode->text()) : null;
                     
                     if ($docUrl) {
-                        if (str_starts_with($docUrl, '/')) {
-                            $parsedUrl = parse_url($url);
-                            $base = $parsedUrl['scheme'] . '://' . $parsedUrl['host'];
-                            $docUrl = $base . $docUrl;
+                        // S'assurer que le lien est absolu
+                        if (!str_starts_with($docUrl, 'http')) {
+                            if (str_starts_with($docUrl, '/')) {
+                                $parsedUrl = parse_url($url);
+                                $docUrl = $parsedUrl['scheme'] . '://' . $parsedUrl['host'] . $docUrl;
+                            } else {
+                                $docUrl = 'https://oatd.org/' . ltrim($docUrl, '/');
+                            }
                         }
 
                         $documents[] = [
@@ -62,7 +82,7 @@ class OatdScraperService implements ScraperInterface
                         ];
                     }
                 } catch (\Exception $e) {
-                    Log::error("Error parsing a document node in OATD: " . $e->getMessage());
+                    Log::error("Erreur parsing DomCrawler (OATD) : " . $e->getMessage());
                 }
             });
 

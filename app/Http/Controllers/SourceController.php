@@ -17,7 +17,7 @@ class SourceController extends Controller
     public function scrape(ScrapingSource $source): JsonResponse
     {
         try {
-            ScrapeSourceJob::dispatch($source);
+            dispatch(new ScrapeSourceJob($source));
             return response()->json([
                 'success' => true,
                 'message' => 'Le scraping de ' . $source->name . ' a été lancé avec succès ! (Asynchrone)'

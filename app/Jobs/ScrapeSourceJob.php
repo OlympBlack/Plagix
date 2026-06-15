@@ -32,30 +32,24 @@ class ScrapeSourceJob implements ShouldQueue
     public function handle(OatdScraperService $scraperService): void
     {
         try {
-            // Force the URL as per requirements, assuming oatd
-            if (str_contains($this->source->base_url, 'oatd.org')) {
-                $urlToScrape = 'https://oatd.org/oatd/search?q=afrique';
-            } else {
-                $urlToScrape = $this->source->base_url;
-            }
+            $urlToScrape = 'https://oatd.org/oatd/search?q=afrique';
             
-            Log::info("Starting job for source: " . $this->source->name . " at URL: " . $urlToScrape);
+            Log::info("Début du scraping pour : " . $this->source->name . " sur " . $urlToScrape);
 
             $scrapedData = $scraperService->scrape($urlToScrape);
+            
+            Log::info("Nombre de documents trouvés : " . count($scrapedData));
 
             if (empty($scrapedData)) {
-                Log::warning("No documents found for source: " . $this->source->name);
                 return;
             }
 
             $docsInserted = 0;
 
             foreach ($scrapedData as $data) {
-                // hash = sha256(source_url) OR hash = sha256(title + author)
-                // Using sha256(source_url) as requested
-                $hash = hash('sha256', $data['source_url']);
+                if (empty($data['source_url'])) continue;
 
-                // Deduplication
+                $hash = hash('sha256', $data['source_url']);
                 $exists = CollectedDocument::where('hash', $hash)->exists();
 
                 if (!$exists) {
@@ -76,10 +70,10 @@ class ScrapeSourceJob implements ShouldQueue
                 'documents_collected' => $this->source->documents_collected + $docsInserted,
             ]);
 
-            Log::info("Scraping completed for source: " . $this->source->name . ". Inserted: " . $docsInserted);
+            Log::info("Nombre de documents enregistrés : " . $docsInserted);
 
         } catch (\Exception $e) {
-            Log::error("ScrapeSourceJob error for source {$this->source->name}: " . $e->getMessage());
+            Log::error("Erreur ScrapeSourceJob : " . $e->getMessage());
         }
     }
 }
