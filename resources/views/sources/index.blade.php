@@ -28,12 +28,13 @@
                             <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 shadow-sm border border-red-200">Inactif</span>
                         @endif
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-6 py-4 whitespace-nowrap" id="docs-count-{{ $source->id }}">
                         <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">{{ $source->documents_collected }}</span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $source->last_run_at ? $source->last_run_at->format('d/m/Y H:i') : 'Jamais' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" id="last-run-{{ $source->id }}">{{ $source->last_run_at ? $source->last_run_at->format('d/m/Y H:i') : 'Jamais' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                         <button 
+                            data-timestamp="{{ $source->last_run_at ? $source->last_run_at->timestamp : '' }}"
                             onclick="triggerScrape({{ $source->id }}, this)" 
                             class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-5 rounded-md shadow-sm transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mx-auto"
                         >
@@ -65,8 +66,9 @@
         buttonElement.disabled = true;
         const btnText = buttonElement.querySelector('.btn-text');
         const loader = buttonElement.querySelector('.loader');
+        const originalTimestamp = buttonElement.getAttribute('data-timestamp') || '';
         
-        btnText.textContent = 'Mise en file d\'attente...';
+        btnText.textContent = 'En cours...';
         loader.classList.remove('hidden');
 
         axios.post(`/sources/${sourceId}/scrape`, {}, {
@@ -76,19 +78,52 @@
         })
         .then(response => {
             showToast(response.data.message, 'success');
+            pollStatus(sourceId, buttonElement, originalTimestamp);
         })
         .catch(error => {
             const msg = error.response?.data?.message || 'Une erreur est survenue.';
             showToast(msg, 'error');
-        })
-        .finally(() => {
-            // Re-enable button quickly to show it's async
-            setTimeout(() => {
-                buttonElement.disabled = false;
-                btnText.textContent = 'Lancer Scraping';
-                loader.classList.add('hidden');
-            }, 1000);
+            buttonElement.disabled = false;
+            btnText.textContent = 'Lancer Scraping';
+            loader.classList.add('hidden');
         });
+    }
+
+    function pollStatus(sourceId, buttonElement, originalTimestamp) {
+        let pollCount = 0;
+        const intervalId = setInterval(() => {
+            pollCount++;
+            if (pollCount > 120) { // Stop polling after ~4 minutes
+                clearInterval(intervalId);
+                buttonElement.disabled = false;
+                buttonElement.querySelector('.btn-text').textContent = 'Lancer Scraping';
+                buttonElement.querySelector('.loader').classList.add('hidden');
+                return;
+            }
+
+            axios.get(`/sources/${sourceId}/status`)
+                .then(response => {
+                    const data = response.data;
+                    const newTimestamp = data.last_run_at_timestamp ? data.last_run_at_timestamp.toString() : '';
+                    
+                    // Update current docs collected periodically just in case it changes dynamically
+                    document.getElementById(`docs-count-${sourceId}`).innerHTML = `<span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">${data.documents_collected}</span>`;
+                    
+                    if (newTimestamp !== originalTimestamp && newTimestamp !== '') {
+                        clearInterval(intervalId);
+                        
+                        document.getElementById(`last-run-${sourceId}`).innerText = data.last_run_at;
+                        buttonElement.setAttribute('data-timestamp', newTimestamp);
+
+                        buttonElement.disabled = false;
+                        buttonElement.querySelector('.btn-text').textContent = 'Lancer Scraping';
+                        buttonElement.querySelector('.loader').classList.add('hidden');
+
+                        showToast("Le scraping asynchrone est terminé !", 'success');
+                    }
+                })
+                .catch(err => console.error("Erreur de polling status:", err));
+        }, 2000);
     }
 
     function showToast(message, type) {
