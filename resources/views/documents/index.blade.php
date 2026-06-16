@@ -77,7 +77,7 @@
 
 {{-- Modale détail document --}}
 <div id="docModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto no-scrollbar relative animate-fade-in">
         {{-- Header --}}
         <div class="sticky top-0 bg-white border-b border-gray-100 px-8 py-5 rounded-t-2xl flex items-start justify-between z-10">
             <h2 id="modal-title" class="text-xl font-bold text-gray-900 pr-8 leading-snug"></h2>
@@ -109,7 +109,7 @@
 
             <div id="modal-desc-wrapper">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Description complète</p>
-                <div id="modal-description" class="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-100 max-h-[40vh] overflow-y-auto"></div>
+                <div id="modal-description" class="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-100 max-h-[40vh] overflow-y-auto no-scrollbar"></div>
             </div>
         </div>
 
@@ -133,6 +133,13 @@
     }
     .animate-fade-in {
         animation: fadeIn 0.25s ease-out;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
     }
 </style>
 
