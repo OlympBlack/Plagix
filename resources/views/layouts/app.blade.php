@@ -20,6 +20,7 @@
             background-color: var(--primary-color);
         }
     </style>
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans">
 
