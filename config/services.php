@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'zenrows' => [
+    'key' => env('ZENROWS_API_KEY'),
+],
+
 ];

@@ -43,13 +43,25 @@ class OatdScraperService implements ScraperInterface
     public function scrape(string $url): array
     {
         try {
-            Log::info("Tentative de requête Guzzle vers : " . $url);
+            Log::info("Début appel ZenRows pour le scrape de : " . $url);
             
-            $response = $this->client->get($url);
+            $zenrowsKey = config('services.zenrows.key');
+            if (empty($zenrowsKey)) {
+                Log::error("Clé API ZenRows manquante dans config/services.php.");
+                return [];
+            }
+
+            $zenrowsUrl = 'https://api.zenrows.com/v1/?' . http_build_query([
+                'apikey' => $zenrowsKey,
+                'url' => $url,
+                'js_render' => 'true',
+            ]);
+
+            $response = $this->client->get($zenrowsUrl);
             $statusCode = $response->getStatusCode();
             $html = (string) $response->getBody();
 
-            Log::info("Code HTTP reçu : " . $statusCode);
+            Log::info("Code HTTP reçu de ZenRows : " . $statusCode);
             Log::info("Taille du HTML reçu : " . strlen($html) . " octets");
 
             // Sauvegarde de l'HTML réel pour pouvoir l'inspecter localement (Cloudflare vs Vraie page)
