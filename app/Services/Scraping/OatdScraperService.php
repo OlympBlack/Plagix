@@ -68,12 +68,44 @@ class OatdScraperService implements ScraperInterface
                     $linkNode = $node->filter('p.links a')->first();
                     $link = $linkNode->count() ? trim($linkNode->attr('href')) : null;
 
+                    // --- Nouveaux champs ---
+
+                    // Date de publication : extraire l'année depuis "Degree: 2019, Université..."
+                    $publicationYear = null;
+                    $degreeNode = $node->filter('p.degree');
+                    if ($degreeNode->count()) {
+                        $degreeText = $degreeNode->text();
+                        if (preg_match('/Degree:\s*(\d{4})/', $degreeText, $matches)) {
+                            $publicationYear = $matches[1];
+                        }
+                    }
+
+                    // Description complète : priorité au div.abstract (texte complet derrière "more")
+                    $description = null;
+                    $abstractNode = $node->filter('div.abstract');
+                    if ($abstractNode->count()) {
+                        $description = trim($abstractNode->text());
+                        // Supprimer le symbole ▼ en début de texte
+                        $description = preg_replace('/^[\x{25BC}\x{25B6}]\s*/u', '', $description);
+                    } else {
+                        // Fallback : le teaser (aperçu tronqué)
+                        $teaserNode = $node->filter('div.teaser');
+                        if ($teaserNode->count()) {
+                            $description = trim($teaserNode->text());
+                            $description = preg_replace('/^[\x{25BC}\x{25B6}]\s*/u', '', $description);
+                            // Supprimer le "(more)" en fin de texte
+                            $description = preg_replace('/\s*\(more\)\s*$/', '', $description);
+                        }
+                    }
+
                     if (!empty($title) && !empty($author) && !empty($university) && !empty($link)) {
                         $documents[] = [
                             'title' => $title,
                             'author' => $author,
                             'university' => $university,
                             'source_url' => $link,
+                            'publication_year' => $publicationYear,
+                            'description' => $description,
                         ];
                     }
                 } catch (\Exception $e) {

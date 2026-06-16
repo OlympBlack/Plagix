@@ -57,6 +57,8 @@ class ScrapeSourceJob implements ShouldQueue
                         'title' => $data['title'],
                         'author' => $data['author'],
                         'university' => $data['university'],
+                        'publication_year' => $data['publication_year'] ?? null,
+                        'description' => $data['description'] ?? null,
                         'source_url' => $data['source_url'],
                         'hash' => $hash,
                         'scraping_source_id' => $this->source->id,
