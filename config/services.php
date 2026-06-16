@@ -35,8 +35,8 @@ return [
         ],
     ],
 
-    'zenrows' => [
-    'key' => env('ZENROWS_API_KEY'),
+    'scrapedo' => [
+    'token' => env('SCRAPEDO_TOKEN'),
 ],
 
 ];

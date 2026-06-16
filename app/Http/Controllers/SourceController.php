@@ -5,27 +5,36 @@ namespace App\Http\Controllers;
 use App\Models\ScrapingSource;
 use App\Jobs\ScrapeSourceJob;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class SourceController extends Controller
 {
     public function index()
     {
         $sources = ScrapingSource::all();
+
         return view('sources.index', compact('sources'));
     }
 
     public function scrape(ScrapingSource $source): JsonResponse
     {
         try {
-            dispatch(new ScrapeSourceJob($source));
+            Log::info("Queue dispatch scraping source: {$source->name}");
+
+            ScrapeSourceJob::dispatch($source);
+
             return response()->json([
                 'success' => true,
-                'message' => 'Le scraping de ' . $source->name . ' a été mis en file d\'attente. Traitement en cours...'
+                'message' => "Scraping lancé pour {$source->name}. Traitement en cours..."
             ]);
+
         } catch (\Exception $e) {
+
+            Log::error("Erreur dispatch job: " . $e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du lancement : ' . $e->getMessage()
+                'message' => "Erreur lors du lancement du scraping"
             ], 500);
         }
     }
@@ -35,8 +44,7 @@ class SourceController extends Controller
         return response()->json([
             'id' => $source->id,
             'documents_collected' => $source->documents_collected,
-            'last_run_at_timestamp' => $source->last_run_at ? $source->last_run_at->timestamp : null,
-            'last_run_at' => $source->last_run_at ? $source->last_run_at->format('d/m/Y H:i') : 'Jamais'
+            'last_run_at' => optional($source->last_run_at)->format('d/m/Y H:i'),
         ]);
     }
 }
