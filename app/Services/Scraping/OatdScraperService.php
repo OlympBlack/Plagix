@@ -11,26 +11,42 @@ class OatdScraperService implements ScraperInterface
     public function scrape(string $url): array
     {
         try {
-            Log::info("Début scraping : {$url}");
+            Log::info("Début scraping via Scrape.do : {$url}");
 
-            // =====================================================
-            // 1. STRATÉGIE : OATD EN DIRECT (PAS DE SCRAPE.DO)
-            // =====================================================
-            $html = $this->fetchDirect($url);
+            $token = config('services.scrapedo.token');
 
-            // fallback si échec
-            if (!$html || strlen($html) < 500) {
-                Log::warning("Direct failed, fallback Scrape.do");
-
-                $html = $this->fetchViaScrapeDo($url);
-            }
-
-            if (!$html || strlen($html) < 500) {
-                Log::error("Impossible de récupérer le contenu");
+            if (!$token) {
+                Log::error("Token  manquant");
                 return [];
             }
 
+            $response = Http::get('https://api.scrape.do/', [
+                'token' => $token,
+                'url' => $url,
+                'render' => 'true'
+            ]);
+
+            $status = $response->status();
+            $html = $response->body();
+
+            Log::info("Scrape.do status: {$status}");
+            Log::info("HTML size: " . strlen($html));
+
             file_put_contents(storage_path('app/oatd_debug.html'), $html);
+
+            if ($status !== 200) {
+                Log::error("Scrape.do error HTTP: {$status}");
+                return [];
+            }
+
+            if (
+                str_contains($html, 'Just a moment') ||
+                str_contains($html, 'Cloudflare') ||
+                strlen($html) < 500
+            ) {
+                Log::warning("Page bloquée ou invalide");
+                return [];
+            }
 
             $crawler = new Crawler($html);
             $documents = [];
@@ -38,8 +54,9 @@ class OatdScraperService implements ScraperInterface
             $crawler->filter('div.result')->each(function ($node) use (&$documents) {
                 try {
                     $titleNode = $node->filter('cite.etdTitle');
-                    if (!$titleNode->count()) return;
-
+                    if (!$titleNode->count()) {
+                        return;
+                    }
                     $title = trim($titleNode->text());
 
                     $authorNode = $titleNode->closest('p')->filter('span')->first();
@@ -51,29 +68,37 @@ class OatdScraperService implements ScraperInterface
                     $linkNode = $node->filter('p.links a')->first();
                     $link = $linkNode->count() ? trim($linkNode->attr('href')) : null;
 
-                    // Year
+                    // --- Nouveaux champs ---
+
+                    // Date de publication : extraire l'année depuis "Degree: 2019, Université..."
                     $publicationYear = null;
                     $degreeNode = $node->filter('p.degree');
                     if ($degreeNode->count()) {
-                        if (preg_match('/(\d{4})/', $degreeNode->text(), $m)) {
-                            $publicationYear = $m[1];
+                        $degreeText = $degreeNode->text();
+                        if (preg_match('/Degree:\s*(\d{4})/', $degreeText, $matches)) {
+                            $publicationYear = $matches[1];
                         }
                     }
 
-                    // Description
+                    // Description complète : priorité au div.abstract (texte complet derrière "more")
                     $description = null;
                     $abstractNode = $node->filter('div.abstract');
-
                     if ($abstractNode->count()) {
                         $description = trim($abstractNode->text());
+                        // Supprimer le symbole ▼ en début de texte
+                        $description = preg_replace('/^[\x{25BC}\x{25B6}]\s*/u', '', $description);
                     } else {
+                        // Fallback : le teaser (aperçu tronqué)
                         $teaserNode = $node->filter('div.teaser');
                         if ($teaserNode->count()) {
                             $description = trim($teaserNode->text());
+                            $description = preg_replace('/^[\x{25BC}\x{25B6}]\s*/u', '', $description);
+                            // Supprimer le "(more)" en fin de texte
+                            $description = preg_replace('/\s*\(more\)\s*$/', '', $description);
                         }
                     }
 
-                    if ($title && $author && $university && $link) {
+                    if (!empty($title) && !empty($author) && !empty($university) && !empty($link)) {
                         $documents[] = [
                             'title' => $title,
                             'author' => $author,
@@ -83,7 +108,6 @@ class OatdScraperService implements ScraperInterface
                             'description' => $description,
                         ];
                     }
-
                 } catch (\Exception $e) {
                     Log::error("Parsing error: " . $e->getMessage());
                 }
@@ -94,72 +118,8 @@ class OatdScraperService implements ScraperInterface
             return $documents;
 
         } catch (\Exception $e) {
-            Log::error("Scraping fatal error: " . $e->getMessage());
+            Log::error("Erreur Scrape.do: " . $e->getMessage());
             return [];
-        }
-    }
-
-    // =====================================================
-    // DIRECT SCRAPE (LOCAL / PRODUCTION SAFE)
-    // =====================================================
-    private function fetchDirect(string $url): ?string
-    {
-        try {
-            $response = Http::timeout(60)
-                ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                    'Accept' => 'text/html,application/xhtml+xml',
-                ])
-                ->get($url);
-
-            if (!$response->successful()) {
-                Log::error("Direct HTTP error: " . $response->status());
-                return null;
-            }
-
-            return $response->body();
-
-        } catch (\Exception $e) {
-            Log::error("Direct scrape failed: " . $e->getMessage());
-            return null;
-        }
-    }
-
-    // =====================================================
-    // SCRAPE.DO FALLBACK
-    // =====================================================
-    private function fetchViaScrapeDo(string $url): ?string
-    {
-        try {
-            $token = config('services.scrapedo.token');
-
-            if (!$token) {
-                Log::error("Scrape.do token missing");
-                return null;
-            }
-
-            Log::info("Fallback Scrape.do : {$url}");
-
-            $response = Http::timeout(120)
-                ->withHeaders([
-                    'Accept' => 'text/html',
-                    'User-Agent' => 'Mozilla/5.0',
-                ])
-                ->get('https://api.scrape.do/', [
-                    'token' => $token,
-                    'url' => $url
-                ]);
-
-            if (!$response->successful()) {
-                Log::error("Scrape.do HTTP error: " . $response->status());
-                return null;
-            }
-
-            return $response->body();
-
-        } catch (\Exception $e) {
-            Log::error("Scrape.do exception: " . $e->getMessage());
-            return null;
         }
     }
 }
