@@ -22,14 +22,9 @@ La source actuellement intégrée est :
 # Accès Rapide
 
 ### Application en ligne
-
 https://plagix.lavoixdabouloussi.org/
 
 ### Vidéo de démonstration
-
-À compléter :
-
-```text
 https://youtu.be/xhTASZVLqK4
 ````
 
