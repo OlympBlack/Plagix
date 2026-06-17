@@ -1,42 +1,31 @@
-````markdown
 # Plagix Project – Prototype de Moteur Antiplagiat
 
 ## Présentation
 
-Plagix est un prototype de moteur d'antiplagiat dont l'objectif est la constitution automatique d'une bibliothèque documentaire de thèses académiques en libre accès.
+Plagix est un prototype de moteur d’antiplagiat conçu pour la constitution automatique d’une bibliothèque documentaire de thèses académiques en libre accès.
 
-Cette première version implémente un système complet de collecte documentaire reposant sur :
+Cette première version implémente un système complet de collecte documentaire basé sur :
 
 - le scraping automatisé de sources académiques ;
 - le traitement asynchrone via Laravel Queue ;
 - la déduplication des documents ;
 - le stockage structuré en base de données ;
-- la consultation des documents collectés à travers une bibliothèque documentaire.
+- la consultation des documents collectés via une bibliothèque documentaire.
 
-La source actuellement intégrée est :
+## Source intégrée
 
 - OATD (Open Access Theses and Dissertations) : https://oatd.org
 
----
 
-# Accès Rapide
+
+## Accès rapide
 
 ### Application en ligne
 https://plagix.lavoixdabouloussi.org/
 
 ### Vidéo de démonstration
 https://youtu.be/xhTASZVLqK4
-````
 
-### Dépôt Git
-
-À compléter :
-
-```text
-[Lien GitHub]
-```
-
----
 
 # Fonctionnalités Implémentées
 
