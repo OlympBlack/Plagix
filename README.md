@@ -262,7 +262,7 @@ SCRAPEDO_TOKEN=VOTRE_TOKEN_ICI
 ## 1. Cloner le projet
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/OlympBlack/Plagix.git
 ```
 
 ## 2. Installer les dépendances
