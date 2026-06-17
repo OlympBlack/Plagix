@@ -21,7 +21,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: /public/
+          server-dir: /plagix.lavoixdabouloussi.org/public/
           local-dir: ./
           exclude: |
             **/.git*
