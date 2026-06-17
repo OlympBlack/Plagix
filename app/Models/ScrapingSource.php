@@ -15,6 +15,10 @@ class ScrapingSource extends Model
         'is_active',
         'last_run_at',
         'documents_collected',
+        'scraping_status',
+        'scraping_progress',
+        'current_page',
+        'total_pages',
     ];
 
     protected $casts = [

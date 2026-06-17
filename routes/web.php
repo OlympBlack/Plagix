@@ -11,5 +11,6 @@ Route::get('/', function () {
 Route::get('/sources', [SourceController::class, 'index'])->name('sources.index');
 Route::post('/sources/{source}/scrape', [SourceController::class, 'scrape'])->name('sources.scrape');
 Route::get('/sources/{source}/status', [SourceController::class, 'status'])->name('sources.status');
+Route::post('/sources/{source}/toggle-pause', [SourceController::class, 'togglePause'])->name('sources.toggle-pause');
 
 Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');

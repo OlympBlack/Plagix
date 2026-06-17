@@ -45,6 +45,27 @@ class SourceController extends Controller
             'id' => $source->id,
             'documents_collected' => $source->documents_collected,
             'last_run_at' => optional($source->last_run_at)->format('d/m/Y H:i'),
+            'last_run_at_timestamp' => optional($source->last_run_at)->timestamp,
+            'status' => $source->scraping_status,
+            'progress' => $source->scraping_progress,
+            'current_page' => $source->current_page,
+            'total_pages' => $source->total_pages,
         ]);
+    }
+
+    public function togglePause(ScrapingSource $source): JsonResponse
+    {
+        if ($source->scraping_status === 'paused') {
+            $source->update(['scraping_status' => 'running']);
+            ScrapeSourceJob::dispatch($source);
+            $msg = "Scraping repris depuis la page " . ($source->current_page + 1);
+        } else if ($source->scraping_status === 'running') {
+            $source->update(['scraping_status' => 'paused']);
+            $msg = "Demande d'arrêt après la page en cours transmise.";
+        } else {
+            return response()->json(['success' => false, 'message' => "Le scraping n'est pas en cours."]);
+        }
+
+        return response()->json(['success' => true, 'message' => $msg, 'new_status' => $source->scraping_status]);
     }
 }

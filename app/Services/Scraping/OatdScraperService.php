@@ -20,11 +20,13 @@ class OatdScraperService implements ScraperInterface
                 return [];
             }
 
-            $response = Http::get('https://api.scrape.do/', [
-                'token' => $token,
-                'url' => $url,
-                'render' => 'true'
-            ]);
+            $response = Http::timeout(120)
+                ->retry(3, 5000)
+                ->get('https://api.scrape.do/', [
+                    'token' => $token,
+                    'url' => $url,
+                    'render' => 'true'
+                ]);
 
             $status = $response->status();
             $html = $response->body();
@@ -113,9 +115,23 @@ class OatdScraperService implements ScraperInterface
                 }
             });
 
-            Log::info("Documents extraits: " . count($documents));
+            $totalPages = 1;
+            $crawler->filter('a')->each(function ($node) use (&$totalPages) {
+                $text = trim($node->text());
+                if (is_numeric($text)) {
+                    $val = (int)$text;
+                    if ($val > $totalPages) {
+                        $totalPages = $val;
+                    }
+                }
+            });
 
-            return $documents;
+            Log::info("Documents extraits: " . count($documents) . " - Pages totales: {$totalPages}");
+
+            return [
+                'documents' => $documents,
+                'total_pages' => $totalPages
+            ];
 
         } catch (\Exception $e) {
             Log::error("Erreur Scrape.do: " . $e->getMessage());
