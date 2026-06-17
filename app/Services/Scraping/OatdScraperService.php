@@ -116,15 +116,21 @@ class OatdScraperService implements ScraperInterface
             });
 
             $totalPages = 1;
-            $crawler->filter('a')->each(function ($node) use (&$totalPages) {
-                $text = trim($node->text());
-                if (is_numeric($text)) {
-                    $val = (int)$text;
-                    if ($val > $totalPages) {
-                        $totalPages = $val;
+            if (preg_match('/Showing records\s+\d+\s*-\s*\d+\s+of\s+([\d,]+)/i', $html, $matches)) {
+                $totalRecords = (int)str_replace(',', '', $matches[1]);
+                $totalPages = (int)ceil($totalRecords / 30);
+            } else {
+                // Secours : trouver la plus grande valeur dans la liste des pages
+                $crawler->filter('.pagination a, .pages a')->each(function ($node) use (&$totalPages) {
+                    $text = trim($node->text());
+                    if (is_numeric($text)) {
+                        $val = (int)$text;
+                        if ($val > $totalPages) {
+                            $totalPages = $val;
+                        }
                     }
-                }
-            });
+                });
+            }
 
             Log::info("Documents extraits: " . count($documents) . " - Pages totales: {$totalPages}");
 
