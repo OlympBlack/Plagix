@@ -30,7 +30,7 @@ https://plagix.lavoixdabouloussi.org/
 À compléter :
 
 ```text
-[Lien vers la vidéo de démonstration]
+https://youtu.be/xhTASZVLqK4
 ````
 
 ### Dépôt Git
