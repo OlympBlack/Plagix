@@ -30,12 +30,14 @@
                                     'running' => 'text-green-600 bg-green-50 font-bold px-2 py-1 rounded',
                                     'paused' => 'text-orange-600 bg-orange-50 font-bold px-2 py-1 rounded',
                                     'error' => 'text-red-500 font-bold px-2 py-1 rounded',
+                                    'completed' => 'text-green-700 bg-green-100 font-bold px-2 py-1 rounded',
                                 ][$source->scraping_status] ?? 'text-gray-500';
                                 $sLabel = [
                                     'idle' => 'PRÊT',
                                     'running' => 'EN COURS...',
                                     'paused' => 'PAUSE',
                                     'error' => 'ERREUR',
+                                    'completed' => 'ACTIF',
                                 ][$source->scraping_status] ?? 'INACTIF';
                             @endphp
                             <span class="text-xs uppercase font-bold tracking-wider {{ $sClass }}">
@@ -81,7 +83,7 @@
                             <div class="flex justify-between items-center mb-2 px-1">
                                 <span class="text-sm font-bold text-slate-700">Progression du scraping</span>
                                 <span class="text-sm font-bold text-slate-700 flex-1 text-center" id="page-count-{{ $source->id }}">
-                                    @if($source->scraping_status === 'running' || $source->scraping_status === 'paused')
+                                    @if($source->scraping_status === 'running' || $source->scraping_status === 'paused' || $source->scraping_status === 'completed')
                                         Page {{ $source->current_page }} / {{ $source->total_pages ?: '?' }}
                                     @else
                                         ---
@@ -211,7 +213,7 @@
     function pollOnce(id) {
         axios.get(`/sources/${id}/status`).then(res => {
             updateRowUI(res.data);
-            if (['idle', 'error'].includes(res.data.status)) {
+            if (['idle', 'error', 'completed'].includes(res.data.status)) {
                 clearInterval(activePolls[id]);
                 delete activePolls[id];
             }
@@ -229,7 +231,8 @@
             'idle': { text: 'PRÊT', class: 'text-gray-500' },
             'running': { text: 'EN COURS...', class: 'text-green-600 bg-green-50 font-bold px-2 py-1 rounded' },
             'paused': { text: 'PAUSE', class: 'text-orange-600 bg-orange-50 font-bold px-2 py-1 rounded' },
-            'error': { text: 'ERREUR', class: 'text-red-500 font-bold px-2 py-1 rounded' }
+            'error': { text: 'ERREUR', class: 'text-red-500 font-bold px-2 py-1 rounded' },
+            'completed': { text: 'ACTIF', class: 'text-green-700 bg-green-100 font-bold px-2 py-1 rounded' }
         };
         const b = badges[status] || badges['idle'];
         col.innerHTML = `
@@ -250,7 +253,7 @@
         
         // Pagination Text
         if (document.getElementById(`page-count-${id}`)) {
-            if (data.status === 'running' || data.status === 'paused') {
+            if (data.status === 'running' || data.status === 'paused' || data.status === 'completed') {
                 document.getElementById(`page-count-${id}`).textContent = `Page ${data.current_page} / ${data.total_pages || '?'}`;
             } else {
                 document.getElementById(`page-count-${id}`).textContent = '---';

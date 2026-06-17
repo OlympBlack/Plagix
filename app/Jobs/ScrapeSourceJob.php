@@ -64,10 +64,10 @@ class ScrapeSourceJob implements ShouldQueue
 
                 if ($this->source->total_pages > 0 && $this->source->current_page >= $this->source->total_pages) {
                     $this->source->update([
-                        'scraping_status' => 'idle',
+                        'scraping_status' => 'completed',
                         'scraping_progress' => 100,
-                        'current_page' => 0, // Reset pour un futur run depuis 0
-                        'total_pages' => 0
+                        'current_page' => $this->source->total_pages,
+                        'total_pages' => $this->source->total_pages
                     ]);
 
                     $timeTook = round(microtime(true) - $startTime, 2);
